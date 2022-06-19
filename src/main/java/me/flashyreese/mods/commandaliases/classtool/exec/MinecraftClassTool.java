@@ -41,7 +41,7 @@ public class MinecraftClassTool implements ClassTool<Function<CommandContext<Ser
         this.minecraftMap.put("SELF", (context) -> {
             try {
                 return context.getSource().getPlayer().getEntityName();
-            } catch (CommandSyntaxException e) {
+            } catch (Exception e) { //CommandSyntaxException e) {
                 e.printStackTrace();
             }
             return null;

@@ -28,15 +28,15 @@ import me.flashyreese.mods.commandaliases.command.builder.reassign.ClientReassig
 import me.flashyreese.mods.commandaliases.command.builder.reassign.ServerReassignCommandBuilder;
 import me.flashyreese.mods.commandaliases.command.builder.redirect.CommandRedirectBuilder;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.fabricmc.fabric.api.client.command.v1.ClientCommandManager;
-import net.fabricmc.fabric.api.client.command.v1.FabricClientCommandSource;
-import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.io.*;
@@ -75,7 +75,7 @@ public class CommandAliasesLoader {
     }
 
     public void registerCommandAliases() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated, environment) -> {
             this.registerCommandAliasesCommands(dispatcher);
             this.loadCommandAliases();
             this.registerCommands(dispatcher);
@@ -153,20 +153,20 @@ public class CommandAliasesLoader {
     private void registerClientCommands() {
         this.clientCommands.forEach(cmd -> {
             if (cmd.getCommandMode() == CommandMode.COMMAND_CUSTOM) {
-                LiteralArgumentBuilder<FabricClientCommandSource> command = new ClientCustomCommandBuilder(cmd.getCustomCommand()).buildCommand(ClientCommandManager.DISPATCHER);
+                LiteralArgumentBuilder<FabricClientCommandSource> command = new ClientCustomCommandBuilder(cmd.getCustomCommand()).buildCommand(ClientCommandManager.getActiveDispatcher());
                 if (command != null) {
-                    ClientCommandManager.DISPATCHER.register(command);
+                    ClientCommandManager.getActiveDispatcher().register(command);
                     this.loadedClientCommands.add(cmd.getCustomCommand().getParent());
                 }
             } else if (cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_ALIAS || cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_CUSTOM || cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN || cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT || cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT_NOARG) {
                 LiteralArgumentBuilder<FabricClientCommandSource> command = null;
                 if (cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT || cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT_NOARG) {
-                    command = new CommandRedirectBuilder<FabricClientCommandSource>(cmd, CommandType.CLIENT).buildCommand(ClientCommandManager.DISPATCHER);
+                    command = new CommandRedirectBuilder<FabricClientCommandSource>(cmd, CommandType.CLIENT).buildCommand(ClientCommandManager.getActiveDispatcher());
                 } else if (cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_ALIAS || cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_CUSTOM || cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN) {
-                    command = new ClientReassignCommandBuilder(cmd, this.literalCommandNodeLiteralField, this.reassignClientCommandMap).buildCommand(ClientCommandManager.DISPATCHER);
+                    command = new ClientReassignCommandBuilder(cmd, this.literalCommandNodeLiteralField, this.reassignClientCommandMap).buildCommand(ClientCommandManager.getActiveDispatcher());
                 }
                 if (command != null) {
-                    ClientCommandManager.DISPATCHER.register(command);
+                    ClientCommandManager.getActiveDispatcher().register(command);
                     if (cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT || cmd.getCommandMode() == CommandMode.COMMAND_REDIRECT_NOARG) {
                         this.loadedClientCommands.add(cmd.getRedirectCommand().getCommand());
                     } else if (cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_ALIAS || cmd.getCommandMode() == CommandMode.COMMAND_REASSIGN_AND_CUSTOM) {
@@ -187,15 +187,15 @@ public class CommandAliasesLoader {
         dispatcher.register(CommandManager.literal("commandaliases").requires(Permissions.require("commandaliases", 4))
                 .executes(context -> {
                     Optional<ModContainer> modContainerOptional = FabricLoader.getInstance().getModContainer("commandaliases");
-                    modContainerOptional.ifPresent(modContainer -> context.getSource().sendFeedback(new LiteralText("Running Command Aliases")
+                    modContainerOptional.ifPresent(modContainer -> context.getSource().sendFeedback(Text.literal("Running Command Aliases")
                             .formatted(Formatting.YELLOW)
-                            .append(new LiteralText(" v" + modContainer.getMetadata().getVersion()).formatted(Formatting.RED)), false));
+                            .append(Text.literal(" v" + modContainer.getMetadata().getVersion()).formatted(Formatting.RED)), false));
 
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(CommandManager.literal("reload").requires(Permissions.require("commandaliases.reload", 4))
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Reloading all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Reloading all Command Aliases!"), true);
                                     this.unregisterServerCommands(dispatcher);
                                     this.loadCommandAliases();
                                     this.registerCommands(dispatcher);
@@ -205,34 +205,34 @@ public class CommandAliasesLoader {
                                         context.getSource().getServer().getPlayerManager().sendCommandTree(e);
                                     }
 
-                                    context.getSource().sendFeedback(new LiteralText("Reloaded all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Reloaded all Command Aliases!"), true);
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
                 )
                 .then(CommandManager.literal("load").requires(Permissions.require("commandaliases.load", 4))
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Loading all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Loading all Command Aliases!"), true);
                                     this.loadCommandAliases();
                                     this.registerCommands(dispatcher);
 
                                     for (ServerPlayerEntity e : context.getSource().getServer().getPlayerManager().getPlayerList()) {
                                         context.getSource().getServer().getPlayerManager().sendCommandTree(e);
                                     }
-                                    context.getSource().sendFeedback(new LiteralText("Loaded all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Loaded all Command Aliases!"), true);
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
                 )
                 .then(CommandManager.literal("unload").requires(Permissions.require("commandaliases.unload", 4))
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Unloading all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Unloading all Command Aliases!"), true);
                                     this.unregisterServerCommands(dispatcher);
 
                                     for (ServerPlayerEntity e : context.getSource().getServer().getPlayerManager().getPlayerList()) {
                                         context.getSource().getServer().getPlayerManager().sendCommandTree(e);
                                     }
-                                    context.getSource().sendFeedback(new LiteralText("Unloaded all Command Aliases!"), true);
+                                    context.getSource().sendFeedback(Text.literal("Unloaded all Command Aliases!"), true);
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
@@ -244,41 +244,41 @@ public class CommandAliasesLoader {
      * Registers all client Command Aliases' commands
      */
     private void registerClientCommandAliasesCommands() {
-        ClientCommandManager.DISPATCHER.register(ClientCommandManager.literal("commandaliases:client")
+        ClientCommandManager.getActiveDispatcher().register(ClientCommandManager.literal("commandaliases:client")
                 .executes(context -> {
                     Optional<ModContainer> modContainerOptional = FabricLoader.getInstance().getModContainer("commandaliases");
-                    modContainerOptional.ifPresent(modContainer -> context.getSource().sendFeedback(new LiteralText("Running Command Aliases")
+                    modContainerOptional.ifPresent(modContainer -> context.getSource().sendFeedback(Text.literal("Running Command Aliases")
                             .formatted(Formatting.YELLOW)
-                            .append(new LiteralText(" v" + modContainer.getMetadata().getVersion()).formatted(Formatting.RED))));
+                            .append(Text.literal(" v" + modContainer.getMetadata().getVersion()).formatted(Formatting.RED))));
 
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(ClientCommandManager.literal("reload")
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Reloading all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Reloading all client Command Aliases!"));
                                     this.unregisterClientCommands();
                                     this.loadClientCommandAliases();
                                     this.registerClientCommands();
-                                    context.getSource().sendFeedback(new LiteralText("Reloaded all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Reloaded all client Command Aliases!"));
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
                 )
                 .then(ClientCommandManager.literal("load")
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Loading all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Loading all client Command Aliases!"));
                                     this.loadClientCommandAliases();
                                     this.registerClientCommands();
-                                    context.getSource().sendFeedback(new LiteralText("Loaded all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Loaded all client Command Aliases!"));
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
                 )
                 .then(ClientCommandManager.literal("unload")
                         .executes(context -> {
-                                    context.getSource().sendFeedback(new LiteralText("Unloading all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Unloading all client Command Aliases!"));
                                     this.unregisterClientCommands();
-                                    context.getSource().sendFeedback(new LiteralText("Unloaded all client Command Aliases!"));
+                                    context.getSource().sendFeedback(Text.literal("Unloaded all client Command Aliases!"));
                                     return Command.SINGLE_SUCCESS;
                                 }
                         )
@@ -324,17 +324,17 @@ public class CommandAliasesLoader {
      */
     private void unregisterClientCommands() {
         for (String cmd : this.loadedClientCommands) {
-            ClientCommandManager.DISPATCHER.getRoot().getChildren().removeIf(node -> node.getName().equals(cmd));
+            ClientCommandManager.getActiveDispatcher().getRoot().getChildren().removeIf(node -> node.getName().equals(cmd));
         }
         for (Map.Entry<String, String> entry : this.reassignClientCommandMap.entrySet()) {
-            CommandNode<FabricClientCommandSource> commandNode = ClientCommandManager.DISPATCHER.getRoot().getChildren().stream().filter(node ->
+            CommandNode<FabricClientCommandSource> commandNode = ClientCommandManager.getActiveDispatcher().getRoot().getChildren().stream().filter(node ->
                     node.getName().equals(entry.getValue())).findFirst().orElse(null);
 
-            CommandNode<FabricClientCommandSource> commandReassignNode = ClientCommandManager.DISPATCHER.getRoot().getChildren().stream().filter(node ->
+            CommandNode<FabricClientCommandSource> commandReassignNode = ClientCommandManager.getActiveDispatcher().getRoot().getChildren().stream().filter(node ->
                     node.getName().equals(entry.getKey())).findFirst().orElse(null);
 
             if (commandNode != null && commandReassignNode == null) {
-                ClientCommandManager.DISPATCHER.getRoot().getChildren().removeIf(node -> node.getName().equals(entry.getValue()));
+                ClientCommandManager.getActiveDispatcher().getRoot().getChildren().removeIf(node -> node.getName().equals(entry.getValue()));
 
                 try {
                     this.literalCommandNodeLiteralField.set(commandNode, entry.getKey());
@@ -342,7 +342,7 @@ public class CommandAliasesLoader {
                     e.printStackTrace();
                     continue;
                 }
-                ClientCommandManager.DISPATCHER.getRoot().addChild(commandNode);
+                ClientCommandManager.getActiveDispatcher().getRoot().addChild(commandNode);
             }
         }
 

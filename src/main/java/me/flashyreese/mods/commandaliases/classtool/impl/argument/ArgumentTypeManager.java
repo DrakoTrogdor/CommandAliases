@@ -17,10 +17,16 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import me.flashyreese.mods.commandaliases.classtool.ClassTool;
 import me.flashyreese.mods.commandaliases.command.builder.alias.AliasHolder;
 import net.minecraft.command.argument.*;
+import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.util.registry.DynamicRegistryManager;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
 
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Represents the Argument Type Manager Class Tool
@@ -50,6 +56,7 @@ public class ArgumentTypeManager implements ClassTool<ArgumentType<?>> {
     }
 
     private void registerArgumentTypes() {
+        CommandRegistryAccess commandRegistryAccess = new CommandRegistryAccess(DynamicRegistryManager.createAndLoad());
         this.argumentMap.put("minecraft:word", StringArgumentType.word());
         this.argumentMap.put("minecraft:string", StringArgumentType.string());
         this.argumentMap.put("minecraft:greedy_string", StringArgumentType.greedyString());
@@ -67,10 +74,10 @@ public class ArgumentTypeManager implements ClassTool<ArgumentType<?>> {
         this.argumentMap.put("minecraft:column_pos", ColumnPosArgumentType.columnPos());
         this.argumentMap.put("minecraft:vec3", Vec3ArgumentType.vec3());
         this.argumentMap.put("minecraft:vec2", Vec2ArgumentType.vec2());
-        this.argumentMap.put("minecraft:block_state", BlockStateArgumentType.blockState());
-        this.argumentMap.put("minecraft:block_predicate", BlockPredicateArgumentType.blockPredicate());
-        this.argumentMap.put("minecraft:item_stack", ItemStackArgumentType.itemStack());
-        this.argumentMap.put("minecraft:item_predicate", ItemPredicateArgumentType.itemPredicate());
+        this.argumentMap.put("minecraft:block_state", BlockStateArgumentType.blockState(commandRegistryAccess));
+        this.argumentMap.put("minecraft:block_predicate", BlockPredicateArgumentType.blockPredicate(commandRegistryAccess));
+        this.argumentMap.put("minecraft:item_stack", ItemStackArgumentType.itemStack(commandRegistryAccess));
+        this.argumentMap.put("minecraft:item_predicate", ItemPredicateArgumentType.itemPredicate(commandRegistryAccess));
         this.argumentMap.put("minecraft:color", ColorArgumentType.color());
         this.argumentMap.put("minecraft:component", TextArgumentType.text());
         this.argumentMap.put("minecraft:message", MessageArgumentType.message());
